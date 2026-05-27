@@ -1,0 +1,38 @@
+name: Daily News Update
+
+on:
+  schedule:
+    - cron: '0 20 * * *' //UTC20:00 = JST5:00 starts at 5:00 every day
+
+  workflow_dispatch:
+
+jobs:
+  update-news:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Compile
+        run: mvn compile
+
+      - name: Run App
+        run: mvn exec:java
+
+      - name: Commit and Push
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+
+          git add index.html
+
+          git commit -m "Daily news update" || echo "No changes"
+
+          git push
