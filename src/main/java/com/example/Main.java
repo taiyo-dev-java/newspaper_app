@@ -8,6 +8,11 @@ import com.google.gson.Gson;
 import java.util.ArrayList;
 import java.util.List;
 import java.io.FileWriter;
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import org.w3c.dom.Document;
+import org.w3c.dom.NodeList;
+import org.w3c.dom.Element;
 
 public class Main {
 
@@ -17,7 +22,7 @@ public class Main {
             Gson gson = new Gson();
             List<Article> articles = new ArrayList<>();
 
-            // トップ記事ID一覧取得
+            // ハッカーニューストップ記事ID一覧取得
             String topStoriesUrl =
                     "https://hacker-news.firebaseio.com/v0/topstories.json";
 
@@ -50,10 +55,63 @@ public class Main {
                 // JSON → Article変換
                 Article article =
                 gson.fromJson(itemResponse, Article.class);
+                article.source = "Hacker News";
 
                 // Listへ追加
                 articles.add(article);
             }
+
+            //はてなブログ記事取得
+
+            String hatenaUrl =
+                "https://b.hatena.ne.jp/hotentry/it.rss";
+
+            DocumentBuilderFactory factory =
+                    DocumentBuilderFactory.newInstance();
+
+            DocumentBuilder builder =
+                    factory.newDocumentBuilder();
+
+            Document document =
+                    builder.parse(hatenaUrl);
+
+            NodeList items =
+                    document.getElementsByTagName("item");
+
+            for (int i = 0; i < 30; i++) {
+
+                Element item =
+                        (Element) items.item(i);
+
+                String title =
+                        item.getElementsByTagName("title")
+                                .item(0)
+                                .getTextContent();
+
+                String link =
+                        item.getElementsByTagName("link")
+                                .item(0)
+                                .getTextContent();
+
+                String count =
+                        item.getElementsByTagName(
+                                "hatena:bookmarkcount")
+                                .item(0)
+                                .getTextContent();
+
+                Article article = new Article();
+
+                article.source = "HatenaBlog";
+
+                article.title = title;
+
+                article.url = link;
+
+                article.score = Integer.parseInt(count);
+
+                articles.add(article);
+            }
+
 
             //LIstの中身をすべて出力
             StringBuilder html = new StringBuilder();
@@ -65,9 +123,19 @@ public class Main {
             html.append("</head>");
             html.append("<body>");
 
-            html.append("<h1>Hacker News Top 30</h1>");
+
+            String currentSource = "";
 
             for (Article article : articles) {
+
+                if (!article.source.equals(currentSource)) {
+
+                    currentSource = article.source;
+
+                    html.append("<h1>")
+                            .append(currentSource)
+                            .append("</h1>");
+                }
 
                 html.append("<hr>");
 
@@ -92,7 +160,7 @@ public class Main {
             html.append("</body>");
             html.append("</html>");
 
-            FileWriter writer = new FileWriter("news.html");
+            FileWriter writer = new FileWriter("index.html");
 
             writer.write(html.toString());
 

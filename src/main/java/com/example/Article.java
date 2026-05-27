@@ -9,5 +9,6 @@ public class Article {
     String title;
     String type;
     String url;
+    String source;
 
 }
