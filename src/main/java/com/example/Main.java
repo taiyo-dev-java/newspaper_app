@@ -7,6 +7,7 @@ import java.net.URL;
 import com.google.gson.Gson;
 import java.util.ArrayList;
 import java.util.List;
+import java.io.FileWriter;
 
 public class Main {
 
@@ -55,18 +56,49 @@ public class Main {
             }
 
             //LIstの中身をすべて出力
-            System.out.println("\n===== ARTICLE LIST =====");
+            StringBuilder html = new StringBuilder();
+
+            html.append("<html>");
+            html.append("<head>");
+            html.append("<meta charset='UTF-8'>");
+            html.append("<title>Hacker News Top 30</title>");
+            html.append("</head>");
+            html.append("<body>");
+
+            html.append("<h1>Hacker News Top 30</h1>");
 
             for (Article article : articles) {
 
-                System.out.println("--------------------");
+                html.append("<hr>");
 
-                System.out.println("Title : " + article.title);
+                html.append("<h2>")
+                        .append(article.title)
+                        .append("</h2>");
 
-                System.out.println("URL   : " + article.url);
+                html.append("<p>Score : ")
+                        .append(article.score)
+                        .append("</p>");
 
-                System.out.println("Score : " + article.score);
-            }   
+                if (article.url != null) {
+
+                    html.append("<a href='")
+                            .append(article.url)
+                            .append("'>")
+                            .append(article.url)
+                            .append("</a>");
+                }
+            }
+
+            html.append("</body>");
+            html.append("</html>");
+
+            FileWriter writer = new FileWriter("news.html");
+
+            writer.write(html.toString());
+
+            writer.close();
+
+            System.out.println("news.html を作成しました");
 
 
         //エラー時の処理
