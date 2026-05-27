@@ -1,8 +1,8 @@
 name: Daily News Update
 
-on:
+'on':
   schedule:
-    - cron: '0 20 * * *' //UTC20:00 = JST5:00 starts at 5:00 every day
+    - cron: '0 20 * * *' //UTC20:00(JST5:00)に毎日実行
 
   workflow_dispatch:
 
