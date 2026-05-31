@@ -38,3 +38,6 @@ Thumbs.db
 
 # env
 .env
+
+# Local DB Config
+src/main/java/com/example/LocalConfig.java

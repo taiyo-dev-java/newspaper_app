@@ -21,12 +21,15 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '21'
+          java-version: '11'
 
       - name: Compile
         run: mvn compile
 
       - name: Run App
+        DB_URL: ${{ secrets.DB_URL }}
+        DB_USER: ${{ secrets.DB_USER }}
+        DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
         run: mvn exec:java
 
       - name: Commit and Push
