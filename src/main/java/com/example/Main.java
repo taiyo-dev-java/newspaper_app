@@ -21,207 +21,221 @@ import org.w3c.dom.Element;
 public class Main {
 
     public static void main(String[] args) {
-        //github actionsで環境変数からDB接続情報を取得
+
+    try {
+
+        List<Article> articles = new ArrayList<>();
+
+        articles.addAll(fetchHackerNews());
+
+        articles.addAll(fetchHatena());
+
+        saveArticles(articles);
+
+        generateHtml(articles);
+
+    } catch (Exception e) {
+        e.printStackTrace();
+    }
+
+    }
+
+
+    private static List<Article> fetchHackerNews() throws Exception {
+
+        List<Article> articles = new ArrayList<>();
+
+        Gson gson = new Gson();
+
+        // ハッカーニューストップ記事ID一覧取得
+        String topStoriesUrl =
+            "https://hacker-news.firebaseio.com/v0/topstories.json";
+
+        String topStoriesResponse = getResponse(topStoriesUrl);
+
+        System.out.println("Top Stories IDs:");
+        System.out.println(topStoriesResponse);
+
+        // JSON配列を雑に分割
+        String cleaned =
+            topStoriesResponse.replace("[", "").replace("]", "");
+
+        String[] ids = cleaned.split(",");
+
+        System.out.println("\n===== TOP 30 ARTICLES =====");
+
+        for (int i = 0; i < 30; i++) {
+
+            String id = ids[i].trim();
+
+            String itemUrl =
+                "https://hacker-news.firebaseio.com/v0/item/"
+                + id
+                + ".json";
+
+            // APIレスポンス取得
+            String itemResponse = getResponse(itemUrl);
+
+            // JSON → Article変換
+            Article article =
+                gson.fromJson(itemResponse, Article.class);
+                article.source = "Hacker News";
+
+            // Listへ追加
+            articles.add(article);
+        }
+
+        // ここにハッカーニュースから記事を取得するコードを実装
+        return articles;
+    }
+
+    private static List<Article>fetchHatena() throws Exception {
+
+        List<Article> articles = new ArrayList<>();
+
+        String hatenaUrl =
+                    "https://b.hatena.ne.jp/hotentry/it.rss";
+
+        DocumentBuilderFactory factory =
+                    DocumentBuilderFactory.newInstance();
+
+        DocumentBuilder builder =
+                    factory.newDocumentBuilder();
+
+        Document document =
+                    builder.parse(hatenaUrl);
+
+        NodeList items =
+                    document.getElementsByTagName("item");
+
+        for (int i = 0; i < 30; i++) {
+
+        Element item =  (Element) items.item(i);
+
+        String title =  item.getElementsByTagName("title")
+                        .item(0)
+                        .getTextContent();
+
+        String link =   item.getElementsByTagName("link")
+                        .item(0)
+                        .getTextContent();
+
+        String count =   item.getElementsByTagName("hatena:bookmarkcount")
+                        .item(0)
+                        .getTextContent();
+
+        Article article = new Article();
+
+        article.source = "HatenaBlog";
+
+        article.title = title;
+
+        article.url = link;
+
+        article.score = Integer.parseInt(count);
+
+        articles.add(article);
+        }    
+        return articles;
+    }
+
+    private static void saveArticles(List<Article> articles) throws Exception {
+        
         String url = System.getenv("DB_URL");
         String user = System.getenv("DB_USER");
         String password = System.getenv("DB_PASSWORD");
 
-        //ローカルでテスト実行時に使用
         if (url == null || user == null || password == null) {
-                url = LocalConfig.DB_URL;
-                user = LocalConfig.DB_USER;
-                password = LocalConfig.DB_PASSWORD;
-        }
-
-        try {
-                Gson gson = new Gson();
-                List<Article> articles = new ArrayList<>();
-
-                // ハッカーニューストップ記事ID一覧取得
-                String topStoriesUrl =
-                        "https://hacker-news.firebaseio.com/v0/topstories.json";
-
-                String topStoriesResponse = getResponse(topStoriesUrl);
-
-                System.out.println("Top Stories IDs:");
-                System.out.println(topStoriesResponse);
-
-                // JSON配列を雑に分割
-                String cleaned =
-                    topStoriesResponse.replace("[", "")
-                            .replace("]", "");
-
-                String[] ids = cleaned.split(",");
-
-                System.out.println("\n===== TOP 30 ARTICLES =====");
-
-                for (int i = 0; i < 30; i++) {
-
-                        String id = ids[i].trim();
-
-                        String itemUrl =
-                        "https://hacker-news.firebaseio.com/v0/item/"
-                        + id
-                        + ".json";
-
-                        // APIレスポンス取得
-                        String itemResponse = getResponse(itemUrl);
-
-                        // JSON → Article変換
-                        Article article =
-                        gson.fromJson(itemResponse, Article.class);
-                        article.source = "Hacker News";
-
-                        // Listへ追加
-                        articles.add(article);
-                }
-                
-
-            //はてなブログ記事取得
-
-            String hatenaUrl =
-                "https://b.hatena.ne.jp/hotentry/it.rss";
-
-            DocumentBuilderFactory factory =
-                    DocumentBuilderFactory.newInstance();
-
-            DocumentBuilder builder =
-                    factory.newDocumentBuilder();
-
-            Document document =
-                    builder.parse(hatenaUrl);
-
-            NodeList items =
-                    document.getElementsByTagName("item");
-
-            for (int i = 0; i < 30; i++) {
-
-                Element item =
-                        (Element) items.item(i);
-
-                String title =
-                        item.getElementsByTagName("title")
-                                .item(0)
-                                .getTextContent();
-
-                String link =
-                        item.getElementsByTagName("link")
-                                .item(0)
-                                .getTextContent();
-
-                String count =
-                        item.getElementsByTagName(
-                                "hatena:bookmarkcount")
-                                .item(0)
-                                .getTextContent();
-
-                Article article = new Article();
-
-                article.source = "HatenaBlog";
-
-                article.title = title;
-
-                article.url = link;
-
-                article.score = Integer.parseInt(count);
-
-                articles.add(article);
+            url = LocalConfig.DB_URL;
+            user = LocalConfig.DB_USER;
+            password = LocalConfig.DB_PASSWORD;
         }
 
         //DBへ保存
-        Connection conn =
-                DriverManager.getConnection(url, user, password);
+        Connection conn = DriverManager.getConnection(url, user, password);
 
         String sql =
-                "INSERT INTO articles(source, title, url, score) "
-                + "VALUES (?, ?, ?, ?) "
-                + "ON CONFLICT (url) DO NOTHING";
+                    "INSERT INTO articles(source, title, url, score) "
+                    + "VALUES (?, ?, ?, ?) "
+                    + "ON CONFLICT (url) DO NOTHING";
 
-        PreparedStatement ps =
-                conn.prepareStatement(sql);
+        PreparedStatement ps = conn.prepareStatement(sql);
 
         for (Article article : articles) {
-                System.out.println(
-                        "登録試行: " +
-                        article.title);
+            System.out.println("登録試行: " +article.title);
 
-                ps.setString(1, article.source);
-                ps.setString(2, article.title);
-                ps.setString(3, article.url);
-                ps.setInt(4, article.score);
-                
-                int count = ps.executeUpdate();
+            ps.setString(1, article.source);
+            ps.setString(2, article.title);
+            ps.setString(3, article.url);
+            ps.setInt(4, article.score);
+                    
+            int count = ps.executeUpdate();
 
 
-                System.out.println(
-                        "登録件数: " + count);
-                        
+            System.out.println("登録件数: " + count);
+                            
         }
 
         ps.close();
         conn.close();
+        
+    }
 
+    private static void generateHtml(List<Article> articles) throws Exception {
+    //LIstの中身をすべて出力
+        StringBuilder html = new StringBuilder();
 
-            //LIstの中身をすべて出力
-            StringBuilder html = new StringBuilder();
+        html.append("<html>");
+        html.append("<head>");
+        html.append("<meta charset='UTF-8'>");
+        html.append("<title>Hacker News Top 30</title>");
+        html.append("</head>");
+        html.append("<body>");
 
-            html.append("<html>");
-            html.append("<head>");
-            html.append("<meta charset='UTF-8'>");
-            html.append("<title>Hacker News Top 30</title>");
-            html.append("</head>");
-            html.append("<body>");
+        String currentSource = "";
 
+        for (Article article : articles) {
 
-            String currentSource = "";
+            if (!article.source.equals(currentSource)) {
 
-            for (Article article : articles) {
+                currentSource = article.source;
 
-                if (!article.source.equals(currentSource)) {
-
-                    currentSource = article.source;
-
-                    html.append("<h1>")
-                            .append(currentSource)
-                            .append("</h1>");
-                }
-
-                html.append("<hr>");
-
-                html.append("<h2>")
-                        .append(article.title)
-                        .append("</h2>");
-
-                html.append("<p>Score : ")
-                        .append(article.score)
-                        .append("</p>");
-
-                if (article.url != null) {
-
-                    html.append("<a href='")
-                            .append(article.url)
-                            .append("'>")
-                            .append(article.url)
-                            .append("</a>");
-                }
+                html.append("<h1>")
+                    .append(currentSource)
+                    .append("</h1>");
             }
 
-            html.append("</body>");
-            html.append("</html>");
+            html.append("<hr>");
 
-            FileWriter writer = new FileWriter("index.html");
+            html.append("<h2>")
+                .append(article.title)
+                .append("</h2>");
 
-            writer.write(html.toString());
+            html.append("<p>Score : ")
+                .append(article.score)
+                .append("</p>");
 
-            writer.close();
+            if (article.url != null) {
 
-            System.out.println("index.html を作成しました");
-
-
-        //エラー時の処理
-        } catch (Exception e) {
-            e.printStackTrace();
+                html.append("<a href='")
+                    .append(article.url)
+                    .append("'>")
+                    .append(article.url)
+                    .append("</a>");
+            }
         }
+
+        html.append("</body>");
+        html.append("</html>");
+
+        FileWriter writer = new FileWriter("index.html");
+
+        writer.write(html.toString());
+
+        writer.close();
+
+        System.out.println("index.html を作成しました");
+        
     }
 
     // HTTP GET 共通処理
